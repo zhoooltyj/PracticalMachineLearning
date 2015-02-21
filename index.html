@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Practical Machine Learning Prediction Assignment : ">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Practical Machine Learning Prediction Assignment</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/zhoooltyj/PracticalMachineLearning">View on GitHub</a>
+
+          <h1 id="project_title">Practical Machine Learning Prediction Assignment</h1>
+          <h2 id="project_tagline"></h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/zhoooltyj/PracticalMachineLearning/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/zhoooltyj/PracticalMachineLearning/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>
+<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h2>
+
+<p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset). </p>
+
+<h2>
+<a id="getting-partioning-and-cleaning-the-data" class="anchor" href="#getting-partioning-and-cleaning-the-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting, partioning and cleaning the data</h2>
+
+<p>The training and testing data sets can be found on the following URLs:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">trainUrl</span> <span class="pl-k">&lt;-</span> <span class="pl-s1"><span class="pl-pds">"</span>http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv<span class="pl-pds">"</span></span>
+
+<span class="pl-vo">testUrl</span> <span class="pl-k">&lt;-</span> <span class="pl-s1"><span class="pl-pds">"</span>http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv<span class="pl-pds">"</span></span></pre></div>
+
+<p>Load data to memory</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">training</span> <span class="pl-k">&lt;-</span> read.csv(url(<span class="pl-vo">trainUrl</span>), <span class="pl-v">na.strings</span><span class="pl-k">=</span>c(<span class="pl-s1"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>,<span class="pl-s1"><span class="pl-pds">"</span>#DIV/0!<span class="pl-pds">"</span></span>,<span class="pl-s1"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>))
+<span class="pl-vo">testing</span> <span class="pl-k">&lt;-</span> read.csv(url(<span class="pl-vo">testUrl</span>), <span class="pl-v">na.strings</span><span class="pl-k">=</span>c(<span class="pl-s1"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>,<span class="pl-s1"><span class="pl-pds">"</span>#DIV/0!<span class="pl-pds">"</span></span>,<span class="pl-s1"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>))</pre></div>
+
+<p>Partioning Training data set into two data sets, 60% for myTraining, 40% for myTesting:</p>
+
+<div class="highlight highlight-r"><pre>library(<span class="pl-vo">caret</span>)
+library(<span class="pl-vo">rpart</span>)
+library(<span class="pl-vo">rpart.plot</span>)
+library(<span class="pl-vo">RColorBrewer</span>)
+library(<span class="pl-vo">rattle</span>)
+library(<span class="pl-vo">randomForest</span>)
+
+<span class="pl-vo">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-vo">training</span><span class="pl-k">$</span><span class="pl-vo">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.6</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-vo">myTraining</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">training</span>[<span class="pl-vo">inTrain</span>, ]; <span class="pl-vo">myTesting</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">training</span>[<span class="pl-k">-</span><span class="pl-vo">inTrain</span>, ]
+dim(<span class="pl-vo">myTraining</span>); dim(<span class="pl-vo">myTesting</span>)</pre></div>
+
+<p>The following transformations were used to clean the data:</p>
+
+<p>Transformation 1: Cleaning NearZeroVariance Variables
+Run this code to view possible NZV Variables:</p>
+
+<div class="highlight highlight-r"><pre>
+<span class="pl-vo">myDataNZV</span> <span class="pl-k">&lt;-</span> nearZeroVar(<span class="pl-vo">myTraining</span>, <span class="pl-v">saveMetrics</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)</pre></div>
+
+<p>Run this code to create another subset without NZV variables:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">myNZVvars</span> <span class="pl-k">&lt;-</span> names(<span class="pl-vo">myTraining</span>) <span class="pl-k">%in%</span> c(<span class="pl-s1"><span class="pl-pds">"</span>new_window<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_roll_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_picth_belt<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>kurtosis_yaw_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_roll_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_roll_belt.1<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_yaw_belt<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>max_yaw_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_yaw_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>amplitude_yaw_belt<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>avg_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>stddev_roll_arm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>var_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>avg_pitch_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>stddev_pitch_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>var_pitch_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>avg_yaw_arm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>stddev_yaw_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>var_yaw_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_picth_arm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>kurtosis_yaw_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_pitch_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_yaw_arm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>max_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_pitch_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>amplitude_roll_arm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>amplitude_pitch_arm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>kurtosis_roll_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_picth_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_yaw_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_roll_dumbbell<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>skewness_pitch_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_yaw_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>max_yaw_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_yaw_dumbbell<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>amplitude_yaw_dumbbell<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_roll_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_picth_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>kurtosis_yaw_forearm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>skewness_roll_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_pitch_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>skewness_yaw_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>max_roll_forearm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>max_yaw_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_roll_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>min_yaw_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>amplitude_roll_forearm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>amplitude_yaw_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>avg_roll_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>stddev_roll_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>var_roll_forearm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>avg_pitch_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>stddev_pitch_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>var_pitch_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>avg_yaw_forearm<span class="pl-pds">"</span></span>,
+<span class="pl-s1"><span class="pl-pds">"</span>stddev_yaw_forearm<span class="pl-pds">"</span></span>, <span class="pl-s1"><span class="pl-pds">"</span>var_yaw_forearm<span class="pl-pds">"</span></span>)
+<span class="pl-vo">myTraining</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">myTraining</span>[<span class="pl-k">!</span><span class="pl-vo">myNZVvars</span>]
+<span class="pl-c">#To check the new N?? of observations</span>
+dim(<span class="pl-vo">myTraining</span>)</pre></div>
+
+<p>Transformation 2: Killing first column of Dataset - ID
+Removing first ID variable so that it does not interfer with ML Algorithms:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">myTraining</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">myTraining</span>[c(<span class="pl-k">-</span><span class="pl-c1">1</span>)]</pre></div>
+
+<p>Transformation 3: Cleaning Variables with too many NAs.
+For Variables that have more than a 60% threshold of NA's I'm going to leave them out:</p>
+
+<div class="highlight highlight-r"><pre>
+<span class="pl-vo">trainingV3</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">myTraining</span> <span class="pl-c">#creating another subset to iterate in loop</span>
+<span class="pl-k">for</span>(<span class="pl-vo">i</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-vo">myTraining</span>)) { <span class="pl-c">#for every column in the training dataset</span>
+        <span class="pl-k">if</span>( sum( is.na( <span class="pl-vo">myTraining</span>[, <span class="pl-vo">i</span>] ) ) <span class="pl-k">/</span>nrow(<span class="pl-vo">myTraining</span>) <span class="pl-k">&gt;</span><span class="pl-k">=</span> .<span class="pl-c1">6</span> ) { <span class="pl-c">#if n?? NAs &gt; 60% of total observations</span>
+        <span class="pl-k">for</span>(<span class="pl-vo">j</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-vo">trainingV3</span>)) {
+            <span class="pl-k">if</span>( length( grep(names(<span class="pl-vo">myTraining</span>[<span class="pl-vo">i</span>]), names(<span class="pl-vo">trainingV3</span>)[<span class="pl-vo">j</span>]) ) <span class="pl-k">==</span><span class="pl-c1">1</span>)  { <span class="pl-c">#if the columns are the same:</span>
+                <span class="pl-vo">trainingV3</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">trainingV3</span>[ , <span class="pl-k">-</span><span class="pl-vo">j</span>] <span class="pl-c">#Remove that column</span>
+            }   
+        } 
+    }
+}
+<span class="pl-c">#To check the new N?? of observations</span>
+dim(<span class="pl-vo">trainingV3</span>)
+
+<span class="pl-c">#Seting back to our set:</span>
+<span class="pl-vo">myTraining</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">trainingV3</span>
+rm(<span class="pl-vo">trainingV3</span>)</pre></div>
+
+<p>Now let us do the exact same 3 transformations but for our myTesting and testing data sets.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">clean1</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-vo">myTraining</span>)
+<span class="pl-vo">clean2</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-vo">myTraining</span>[, <span class="pl-k">-</span><span class="pl-c1">58</span>]) <span class="pl-c">#already with classe column removed</span>
+<span class="pl-vo">myTesting</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">myTesting</span>[<span class="pl-vo">clean1</span>]
+<span class="pl-vo">testing</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">testing</span>[<span class="pl-vo">clean2</span>]
+
+<span class="pl-c">#To check the new N?? of observations</span>
+dim(<span class="pl-vo">myTesting</span>)
+
+<span class="pl-c">#To check the new N?? of observations</span>
+dim(<span class="pl-vo">testing</span>)
+
+<span class="pl-c">#Note: The last column - problem_id - which is not equal to training sets, was also "automagically" removed</span>
+<span class="pl-c">#No need for this code:</span>
+<span class="pl-c">#testing &lt;- testing[-length(testing)]</span></pre></div>
+
+<p>In order to ensure proper functioning of Decision Trees and especially RandomForest Algorithm with the Test data set (data set provided), we need to coerce the data into the same type.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-k">for</span> (<span class="pl-vo">i</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-vo">testing</span>) ) {
+        <span class="pl-k">for</span>(<span class="pl-vo">j</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-vo">myTraining</span>)) {
+        <span class="pl-k">if</span>( length( grep(names(<span class="pl-vo">myTraining</span>[<span class="pl-vo">i</span>]), names(<span class="pl-vo">testing</span>)[<span class="pl-vo">j</span>]) ) <span class="pl-k">==</span><span class="pl-c1">1</span>)  {
+            class(<span class="pl-vo">testing</span>[<span class="pl-vo">j</span>]) <span class="pl-k">&lt;-</span> class(<span class="pl-vo">myTraining</span>[<span class="pl-vo">i</span>])
+        }      
+    }      
+}
+<span class="pl-c">#And to make sure Coertion really worked, simple smart ass technique:</span>
+<span class="pl-vo">testing</span> <span class="pl-k">&lt;-</span> rbind(<span class="pl-vo">myTraining</span>[<span class="pl-c1">2</span>, <span class="pl-k">-</span><span class="pl-c1">58</span>] , <span class="pl-vo">testing</span>) <span class="pl-c">#note row 2 does not mean anything, this will be removed right.. now:</span>
+<span class="pl-vo">testing</span> <span class="pl-k">&lt;-</span> <span class="pl-vo">testing</span>[<span class="pl-k">-</span><span class="pl-c1">1</span>,]</pre></div>
+
+<h2>
+<a id="using-ml-algorithms-for-prediction-decision-tree" class="anchor" href="#using-ml-algorithms-for-prediction-decision-tree" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using ML algorithms for prediction: Decision Tree</h2>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFitA1</span> <span class="pl-k">&lt;-</span> rpart(<span class="pl-vo">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">myTraining</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s1"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+
+fancyRpartPlot(<span class="pl-vo">modFitA1</span>)</pre></div>
+
+<p>Predicting:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">predictionsA1</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFitA1</span>, <span class="pl-vo">myTesting</span>, <span class="pl-v">type</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)</pre></div>
+
+<p>Using confusion Matrix to test results:</p>
+
+<div class="highlight highlight-r"><pre>confusionMatrix(<span class="pl-vo">predictionsA1</span>, <span class="pl-vo">myTesting</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+<span class="pl-c">#Overall Statistics</span>
+
+<span class="pl-c">#               Accuracy : 0.8683          </span>
+<span class="pl-c">#                 95% CI : (0.8607, 0.8757)</span>
+<span class="pl-c">#    No Information Rate : 0.2845          </span>
+<span class="pl-c">#    P-Value [Acc &gt; NIR] : &lt; 2.2e-16       </span>
+
+<span class="pl-c">#                  Kappa : 0.8335 </span></pre></div>
+
+<h2>
+<a id="using-ml-algorithms-for-prediction-random-forests" class="anchor" href="#using-ml-algorithms-for-prediction-random-forests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using ML algorithms for prediction: Random Forests</h2>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">modFitB1</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-vo">classe</span> <span class="pl-k">~</span>. , <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-vo">myTraining</span>)</pre></div>
+
+<p>Predicting:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">predictionsB1</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFitB1</span>, <span class="pl-vo">myTesting</span>, <span class="pl-v">type</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)</pre></div>
+
+<p>Using confusion Matrix to test results:</p>
+
+<div class="highlight highlight-r"><pre>confusionMatrix(<span class="pl-vo">predictionsB1</span>, <span class="pl-vo">myTesting</span><span class="pl-k">$</span><span class="pl-vo">classe</span>)
+
+<span class="pl-c">#Overall Statistics</span>
+
+ <span class="pl-c">#              Accuracy : 0.999          </span>
+ <span class="pl-c">#                95% CI : (0.998, 0.9996)</span>
+ <span class="pl-c">#   No Information Rate : 0.2845         </span>
+ <span class="pl-c">#   P-Value [Acc &gt; NIR] : &lt; 2.2e-16      </span>
+
+ <span class="pl-c">#                 Kappa : 0.9987         </span>
+ <span class="pl-c">#Mcnemar's Test P-Value : NA </span>
+
+</pre></div>
+
+<p>Random Forests yielded better Results, as expected!</p>
+
+<h2>
+<a id="generating-files-to-submit-as-answers-for-the-assignment" class="anchor" href="#generating-files-to-submit-as-answers-for-the-assignment" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating Files to submit as answers for the Assignment:</h2>
+
+<p>Finally, using the provided Test Set out-of-sample error:</p>
+
+<p>For Random Forests is, which yielded a much better prediction:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-vo">predictionsB2</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-vo">modFitB1</span>, <span class="pl-vo">testing</span>, <span class="pl-v">type</span> <span class="pl-k">=</span> <span class="pl-s1"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)</pre></div>
+
+<p>Function to generate files with predictions to submit for assignment</p>
+
+<div class="highlight highlight-r"><pre>
+<span class="pl-v">pml_write_files</span> <span class="pl-k">=</span> <span class="pl-k">function</span>(<span class="pl-vo">x</span>){
+  <span class="pl-v">n</span> <span class="pl-k">=</span> length(<span class="pl-vo">x</span>)
+  <span class="pl-k">for</span>(<span class="pl-vo">i</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-vo">n</span>){
+    <span class="pl-v">filename</span> <span class="pl-k">=</span> paste0(<span class="pl-s1"><span class="pl-pds">"</span>problem_id_<span class="pl-pds">"</span></span>,<span class="pl-vo">i</span>,<span class="pl-s1"><span class="pl-pds">"</span>.txt<span class="pl-pds">"</span></span>)
+    write.table(<span class="pl-vo">x</span>[<span class="pl-vo">i</span>],<span class="pl-v">file</span><span class="pl-k">=</span><span class="pl-vo">filename</span>,<span class="pl-v">quote</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>,<span class="pl-v">row.names</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>,<span class="pl-v">col.names</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+  }
+}
+
+pml_write_files(<span class="pl-vo">predictionsB2</span>)
+</pre></div>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Practical Machine Learning Prediction Assignment maintained by <a href="https://github.com/zhoooltyj">zhoooltyj</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
